@@ -40,8 +40,7 @@ class Database {
 // ユーザー情報を管理するクラス
 class User {
     private $conn;
-    private $table_name = "users";
-
+    private $table_name = "stook_users";
     public $id;
     public $username;
     public $email;
