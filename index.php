@@ -34,7 +34,9 @@ class Database {
             $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
             $this->conn->exec("set names utf8");
         } catch(PDOException $exception) {
-            echo "Connection error: " . $exception->getMessage();
+            error_log("Connection error: " . $exception->getMessage());
+            echo json_encode(["message" => "データベース接続に失敗しました。"]);
+            exit();
         }
 
         return $this->conn;
@@ -64,7 +66,13 @@ class User {
         $query = "SELECT * FROM " . $this->table_name . " WHERE email = :email";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':email', $this->email);
-        $stmt->execute();
+        
+        try {
+            $stmt->execute();
+        } catch(PDOException $exception) {
+            error_log("Login query error: " . $exception->getMessage());
+            return false;
+        }
 
         if ($stmt->rowCount() > 0) {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
