@@ -112,6 +112,7 @@ class UserController {
         $this->user = new User($this->db);
     }
 
+    // ログイン機能
     public function login($data) {
         $this->user->email = $data->email;
         $this->user->password = $data->password;
@@ -135,6 +136,34 @@ class UserController {
             return json_encode(["message" => "Login failed."]);
         }
     }
+
+    // 読み取った食材を検索
+    public function getIngredients($username) {
+        error_log("Getting ingredients for user: " . $username);
+        $query = "SELECT ingredient_name FROM stook_ingredients WHERE username = :username ORDER BY id LIMIT 1";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(':username', $username);
+        
+        try {
+            $stmt->execute();
+            error_log("Query executed: " . $query);
+            $ingredient = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($ingredient) {
+                error_log("Ingredient found: " . $ingredient['ingredient_name']);
+                return json_encode([
+                    "ingredient" => $ingredient['ingredient_name']
+                ]);
+            } else {
+                error_log("No ingredient found for user: " . $username);
+                return json_encode([
+                    "ingredient" => "なし"
+                ]);
+            }
+        } catch(PDOException $exception) {
+            error_log("Ingredient query error: " . $exception->getMessage());
+            return json_encode(["message" => "Database error.", "error" => $exception->getMessage()]);
+        }
+    }
 }
 
 // ルーティング
@@ -148,6 +177,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo $controller->login($data);
     }
 }
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['action']) && $_GET['action'] == 'get_ingredient') {
+        // 食材取得処理
+        if (isset($_GET['username'])) {
+            echo $controller->getIngredients($_GET['username']);
+        } else {
+            echo json_encode(["message" => "Username is required."]);
+        }
+    }
+}
+
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
