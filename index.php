@@ -106,6 +106,20 @@ class User {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // メールアドレスの重複チェック
+    public function emailExists() {
+        $query = "SELECT id FROM " . $this->table_name . " WHERE email = :email";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':email', $this->email);
+        $stmt->execute();
+
+        if ($stmt->rowCount() > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public function createUser() {
         $query = "INSERT INTO " . $this->table_name . " 
                   (username, email, password, postal_code, date_of_birth, gender) 
@@ -212,17 +226,23 @@ class UserController {
         $this->user->date_of_birth = $data->date_of_birth;
         $this->user->gender = $data->gender;
 
+        // メールアドレスの重複チェック
+        if ($this->user->emailExists()) {
+            return json_encode([
+                "message" => "ユーザー登録に失敗しました。",
+                "error" => "このメールアドレスは既に使用されています。",
+            ]);
+        }
+
         $result = $this->user->createUser();
         if ($result["success"]) {
             return json_encode([
                 "message" => "ユーザーが正常に登録されました。",
-                "receivedData" => $data
             ]);
         } else {
             return json_encode([
                 "message" => "ユーザー登録に失敗しました。",
                 "error" => $result["error"],
-                "receivedData" => $data
             ]);
         }
     }
