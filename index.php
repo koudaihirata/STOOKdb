@@ -82,7 +82,7 @@ class User {
 
         if ($stmt->rowCount() > 0) {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($this->password == $row['password']) {
+            if (password_verify($this->password, $row['password'])) {
                 $this->id = $row['id'];
                 $this->username = $row['username'];
                 $this->postal_code = $row['postal_code'];
