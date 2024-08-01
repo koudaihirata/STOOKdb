@@ -6,6 +6,12 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 require_once __DIR__ . '/env.php';
 
+ini_set('display_errors', 0); // エラーメッセージを画面に表示しない
+ini_set('log_errors', 1); // エラーメッセージをログファイルに記録する
+ini_set('error_log', __DIR__ . '/error.log'); // エラーログファイルのパスを設定
+
+header("Content-Type: application/json; charset=UTF-8");
+
 // 環境変数を手動で設定する
 $_ENV['DB_HOST'] = DB_HOST;
 $_ENV['DB_NAME'] = DB_NAME;
@@ -121,15 +127,18 @@ class User {
 
         try {
             if ($stmt->execute()) {
-                return true;
+                return ["success" => true];
+            } else {
+                // エラーログに詳細情報を追加
+                $errorInfo = $stmt->errorInfo();
+                error_log("Failed to execute statement: " . json_encode($errorInfo));
+                return ["success" => false, "error" => $errorInfo[2]];
             }
         } catch (PDOException $exception) {
             error_log("Create user query error: " . $exception->getMessage());
-            return false;
+            return ["success" => false, "error" => $exception->getMessage()];
         }
-        return false;
-    }
-}
+    }}
 
 // ユーザー操作を管理するコントローラクラス
 class UserController {
@@ -203,10 +212,18 @@ class UserController {
         $this->user->date_of_birth = $data->date_of_birth;
         $this->user->gender = $data->gender;
 
-        if ($this->user->createUser()) {
-            return json_encode(["message" => "ユーザーが正常に登録されました。"]);
+        $result = $this->user->createUser();
+        if ($result["success"]) {
+            return json_encode([
+                "message" => "ユーザーが正常に登録されました。",
+                "receivedData" => $data
+            ]);
         } else {
-            return json_encode(["message" => "ユーザー登録に失敗しました。"]);
+            return json_encode([
+                "message" => "ユーザー登録に失敗しました。",
+                "error" => $result["error"],
+                "receivedData" => $data
+            ]);
         }
     }
 }
@@ -214,27 +231,31 @@ class UserController {
 // ルーティング
 $controller = new UserController();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $data = json_decode(file_get_contents("php://input"));
-
-    if (isset($_GET['action']) && $_GET['action'] == 'login') {
-        // ログイン処理
-        echo $controller->login($data);
-    }
-    if ($_GET['action'] == 'register') {
-        // ユーザー登録処理
-        echo $controller->register($data);
-    }
-}
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (isset($_GET['action']) && $_GET['action'] == 'get_ingredient') {
-        // 食材取得処理
-        if (isset($_GET['username'])) {
-            echo $controller->getIngredients($_GET['username']);
-        } else {
-            echo json_encode(["message" => "Username is required."]);
+try {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $data = json_decode(file_get_contents("php://input"));
+    
+        if (isset($_GET['action']) && $_GET['action'] == 'login') {
+            // ログイン処理
+            echo $controller->login($data);
         }
-    }
+        if (isset($_GET['action']) && $_GET['action'] == 'register') {
+            // ユーザー登録処理
+            echo $controller->register($data);
+        }
+    } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        if (isset($_GET['action']) && $_GET['action'] == 'get_ingredient') {
+            // 食材取得処理
+            if (isset($_GET['username'])) {
+                echo $controller->getIngredients($_GET['username']);
+            } else {
+                echo json_encode(["message" => "Username is required."]);
+            }
+        }
+    }    
+} catch (Exception $e) {
+    error_log("Unhandled exception: " . $e->getMessage());
+    echo json_encode(["message" => "サーバーエラーが発生しました。", "error" => $e->getMessage()]);
 }
 
 
