@@ -99,6 +99,36 @@ class User {
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    public function createUser() {
+        $query = "INSERT INTO " . $this->table_name . " 
+                  (username, email, password, postal_code, date_of_birth, gender) 
+                  VALUES 
+                  (:username, :email, :password, :postal_code, :date_of_birth, :gender)";
+        
+        $stmt = $this->conn->prepare($query);
+
+        // パスワードをハッシュ化
+        $hashed_password = password_hash($this->password, PASSWORD_BCRYPT);
+
+        // バインドパラメータ
+        $stmt->bindParam(':username', $this->username);
+        $stmt->bindParam(':email', $this->email);
+        $stmt->bindParam(':password', $hashed_password);
+        $stmt->bindParam(':postal_code', $this->postal_code);
+        $stmt->bindParam(':date_of_birth', $this->date_of_birth);
+        $stmt->bindParam(':gender', $this->gender);
+
+        try {
+            if ($stmt->execute()) {
+                return true;
+            }
+        } catch (PDOException $exception) {
+            error_log("Create user query error: " . $exception->getMessage());
+            return false;
+        }
+        return false;
+    }
 }
 
 // ユーザー操作を管理するコントローラクラス
@@ -164,6 +194,21 @@ class UserController {
             return json_encode(["message" => "Database error.", "error" => $exception->getMessage()]);
         }
     }
+    // ユーザー登録機能
+    public function register($data) {
+        $this->user->username = $data->username;
+        $this->user->email = $data->email;
+        $this->user->password = $data->password;
+        $this->user->postal_code = $data->postal_code;
+        $this->user->date_of_birth = $data->date_of_birth;
+        $this->user->gender = $data->gender;
+
+        if ($this->user->createUser()) {
+            return json_encode(["message" => "ユーザーが正常に登録されました。"]);
+        } else {
+            return json_encode(["message" => "ユーザー登録に失敗しました。"]);
+        }
+    }
 }
 
 // ルーティング
@@ -175,6 +220,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_GET['action']) && $_GET['action'] == 'login') {
         // ログイン処理
         echo $controller->login($data);
+    }
+    if ($_GET['action'] == 'register') {
+        // ユーザー登録処理
+        echo $controller->register($data);
     }
 }
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
