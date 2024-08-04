@@ -193,7 +193,7 @@ class UserController {
     // 読み取った食材を検索
     public function getIngredients($username) {
         error_log("Getting ingredients for user: " . $username);
-        $query = "SELECT ingredient_name FROM stook_ingredients WHERE username = :username ORDER BY id LIMIT 1";
+        $query = "SELECT ingredient_name FROM stook_ingredients WHERE username = :username ORDER BY quantity DESC LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':username', $username);
         
