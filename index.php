@@ -227,7 +227,7 @@ class UserController {
         try {
             $stmt->execute();
             error_log("Query executed: " . $query);
-            $ingredient = $stmt->fetch(PDO::FETCH_ASSOC);
+            $ingredient = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if ($ingredient) {
                 error_log("Ingredient found: " . $ingredient['ingredient_name']);
                 return json_encode([
@@ -244,7 +244,7 @@ class UserController {
             return json_encode(["message" => "Database error.", "error" => $exception->getMessage()]);
         }
     }
-    
+
     // ユーザー登録機能
     public function register($data) {
         $this->user->username = $data->username;
