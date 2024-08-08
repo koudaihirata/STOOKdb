@@ -191,11 +191,11 @@ class UserController {
     }
 
     // 読み取った食材を検索
-    public function getIngredients($username) {
-        error_log("Getting ingredients for user: " . $username);
-        $query = "SELECT ingredient_name FROM stook_ingredients WHERE username = :username ORDER BY quantity DESC LIMIT 1";
+    public function getIngredients($email) {
+        error_log("Getting ingredients for user: " . $email);
+        $query = "SELECT ingredient_name FROM stook_ingredients WHERE email = :email ORDER BY quantity DESC LIMIT 1";
         $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':username', $username);
+        $stmt->bindParam(':email', $email);
         
         try {
             $stmt->execute();
@@ -207,7 +207,7 @@ class UserController {
                     "ingredient" => $ingredient['ingredient_name']
                 ]);
             } else {
-                error_log("No ingredient found for user: " . $username);
+                error_log("No ingredient found for user: " . $email);
                 return json_encode([
                     "ingredient" => "なし"
                 ]);
@@ -266,10 +266,10 @@ try {
     } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (isset($_GET['action']) && $_GET['action'] == 'get_ingredient') {
             // 食材取得処理
-            if (isset($_GET['username'])) {
-                echo $controller->getIngredients($_GET['username']);
+            if (isset($_GET['email'])) {
+                echo $controller->getIngredients($_GET['email']);
             } else {
-                echo json_encode(["message" => "Username is required."]);
+                echo json_encode(["message" => "email is required."]);
             }
         }
     }    
