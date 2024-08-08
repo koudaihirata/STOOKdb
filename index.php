@@ -191,7 +191,7 @@ class UserController {
     }
 
     // 読み取った食材を検索
-    public function getIngredients($email) {
+    public function getIngredient($email) {
         error_log("Getting ingredients for user: " . $email);
         $query = "SELECT ingredient_name FROM stook_ingredients WHERE email = :email ORDER BY quantity DESC LIMIT 1";
         $stmt = $this->db->prepare($query);
@@ -217,6 +217,34 @@ class UserController {
             return json_encode(["message" => "Database error.", "error" => $exception->getMessage()]);
         }
     }
+    // 読み取った食材を検索(上位5件)
+    public function getIngredients($email){
+        error_log("Getting ingredients for user: " . $email);
+        $query = "SELECT ingredient_name FROM stook_ingredients WHERE email = :email ORDER BY quantity DESC LIMIT 5";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(':email', $email);
+        
+        try {
+            $stmt->execute();
+            error_log("Query executed: " . $query);
+            $ingredient = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($ingredient) {
+                error_log("Ingredient found: " . $ingredient['ingredient_name']);
+                return json_encode([
+                    "ingredient" => $ingredient['ingredient_name']
+                ]);
+            } else {
+                error_log("No ingredient found for user: " . $email);
+                return json_encode([
+                    "ingredient" => "なし"
+                ]);
+            }
+        } catch(PDOException $exception) {
+            error_log("Ingredient query error: " . $exception->getMessage());
+            return json_encode(["message" => "Database error.", "error" => $exception->getMessage()]);
+        }
+    }
+    
     // ユーザー登録機能
     public function register($data) {
         $this->user->username = $data->username;
@@ -266,6 +294,14 @@ try {
     } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (isset($_GET['action']) && $_GET['action'] == 'get_ingredient') {
             // 食材取得処理
+            if (isset($_GET['email'])) {
+                echo $controller->getIngredient($_GET['email']);
+            } else {
+                echo json_encode(["message" => "email is required."]);
+            }
+        }
+        if (isset($_GET['action']) && $_GET['action'] == 'get_ingredients') {
+            // 食材取得処理(上位5件)
             if (isset($_GET['email'])) {
                 echo $controller->getIngredients($_GET['email']);
             } else {
