@@ -227,11 +227,11 @@ class UserController {
         try {
             $stmt->execute();
             error_log("Query executed: " . $query);
-            $ingredient = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            if ($ingredient) {
-                error_log("Ingredient found: " . $ingredient['ingredient_name']);
+            $ingredients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($ingredients) {
+                error_log("Ingredient found: " . $ingredients['ingredient_name']);
                 return json_encode([
-                    "ingredient" => $ingredient['ingredient_name']
+                    "ingredient" => $ingredients['ingredient_name']
                 ]);
             } else {
                 error_log("No ingredient found for user: " . $email);
