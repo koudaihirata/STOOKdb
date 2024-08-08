@@ -229,14 +229,16 @@ class UserController {
             error_log("Query executed: " . $query);
             $ingredients = $stmt->fetchAll(PDO::FETCH_ASSOC);
             if ($ingredients) {
-                error_log("Ingredient found: " . $ingredients['ingredient_name']);
+                error_log("Ingredients found: " . json_encode($ingredients));
                 return json_encode([
-                    "ingredient" => $ingredients['ingredient_name']
+                    "ingredients" => array_map(function($ingredient) {
+                        return $ingredient['ingredient_name'];
+                    }, $ingredients)
                 ]);
             } else {
-                error_log("No ingredient found for user: " . $email);
+                error_log("No ingredients found for user: " . $email);
                 return json_encode([
-                    "ingredient" => "なし"
+                    "ingredients" => []
                 ]);
             }
         } catch(PDOException $exception) {
@@ -274,6 +276,49 @@ class UserController {
             ]);
         }
     }
+
+    // 検出した食材をdbに保存
+    public function saveIngredients($data) {
+        if (!isset($data->email) || !isset($data->ingredients)) {
+            return json_encode(["message" => "必要なデータが不足しています。"]);
+        }
+
+        $email = $data->email;
+        $ingredients = $data->ingredients;
+
+        try {
+            foreach ($ingredients as $ingredient) {
+                // まず、食材が既に存在するかをチェック
+                $query = "SELECT id, quantity FROM stook_ingredients WHERE email = :email AND ingredient_name = :ingredient_name";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(':email', $email);
+                $stmt->bindParam(':ingredient_name', $ingredient);
+                $stmt->execute();
+
+                if ($stmt->rowCount() > 0) {
+                    // 食材が存在する場合、quantityを増加
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $newQuantity = $row['quantity'] + 1;
+                    $updateQuery = "UPDATE stook_ingredients SET quantity = :quantity WHERE id = :id";
+                    $updateStmt = $this->db->prepare($updateQuery);
+                    $updateStmt->bindParam(':quantity', $newQuantity);
+                    $updateStmt->bindParam(':id', $row['id']);
+                    $updateStmt->execute();
+                } else {
+                    // 食材が存在しない場合、新しいレコードを挿入
+                    $insertQuery = "INSERT INTO stook_ingredients (email, ingredient_name, quantity) VALUES (:email, :ingredient_name, 1)";
+                    $insertStmt = $this->db->prepare($insertQuery);
+                    $insertStmt->bindParam(':email', $email);
+                    $insertStmt->bindParam(':ingredient_name', $ingredient);
+                    $insertStmt->execute();
+                }
+            }
+            return json_encode(["message" => "食材が正常に保存されました。"]);
+        } catch (PDOException $exception) {
+            error_log("Save ingredients query error: " . $exception->getMessage());
+            return json_encode(["message" => "食材の保存に失敗しました。", "error" => $exception->getMessage()]);
+        }
+    }
 }
 
 // ルーティング
@@ -290,6 +335,10 @@ try {
         if (isset($_GET['action']) && $_GET['action'] == 'register') {
             // ユーザー登録処理
             echo $controller->register($data);
+        }
+        if (isset($_GET['action']) && $_GET['action'] == 'save_ingredients') {
+            // 読み取った食材を保存
+            echo $controller->saveIngredients($data);
         }
     } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (isset($_GET['action']) && $_GET['action'] == 'get_ingredient') {
